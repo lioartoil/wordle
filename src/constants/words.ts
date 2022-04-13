@@ -5185,7 +5185,6 @@ heigh
 shnor
 trued
 zayin
-liest
 barfs
 bassi
 qophs
@@ -5754,4 +5753,4 @@ osier
 roble
 rumba
 biffy
-pupal`;
+pupal`.split('\n');
