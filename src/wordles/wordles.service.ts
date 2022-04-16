@@ -2,18 +2,14 @@ import { Injectable } from '@nestjs/common';
 
 import { WORDS } from 'src/constants/words';
 
-import { GetWordsRequest, Try, Wordle } from './dtos/get-words.request.dto';
-import { WordFilterOption } from './models/wordles.model';
+import { GetWordsRequest, Wordle } from './dtos/get-words.request.dto';
+import { MappedFilter, UpdateYellowCharactersArgs, WordFilterOption } from './models/wordles.model';
 
 @Injectable()
 export class WordlesService {
   getWords({ wordles }: GetWordsRequest) {
     const wordsGroups = this.getFilterWords(wordles);
-
-    if (wordsGroups.filter(words => words.length === 1).length) {
-      return wordsGroups.filter(words => words.length === 1)[0][0];
-    }
-
+    const correctWords = wordsGroups.filter(words => words.length === 1).flat();
     const lettersPointGroups = wordsGroups.map(words => this.getLettersPoint(words));
     const uniqueWords = wordsGroups.reduce((result, words) => {
       words.forEach(word => result.add(word));
@@ -36,59 +32,81 @@ export class WordlesService {
 
         return result;
       },
-      Array.from([...uniqueWords], word => ({ word, occursSize: 0, matchesSize: 0 })),
+      Array.from([...uniqueWords], word => ({
+        word,
+        occursSize: 0,
+        matchesSize: 0,
+        isCorrect: correctWords.includes(word),
+      })),
     );
 
     sumWordPoints.sort(this.sortBySize);
 
     const returnWords =
       sumWordPoints.length > 10
-        ? sumWordPoints.filter(({ occursSize }) => occursSize >= sumWordPoints[9].occursSize)
+        ? sumWordPoints.filter(
+            ({ occursSize, isCorrect }) => isCorrect || occursSize >= sumWordPoints[9].occursSize,
+          )
         : sumWordPoints;
 
-    return returnWords.map(({ word, occursSize, matchesSize }) => ({
+    return returnWords.map(({ word, occursSize, matchesSize, isCorrect }) => ({
       word,
       occursCount: occursSize,
       matchesCount: matchesSize,
+      isCorrect: isCorrect || undefined,
     }));
   }
 
   private getFilterWords(wordles: Wordle[]) {
     return wordles?.length
-      ? wordles.map(({ tries }) => {
-          const filterOptions = tries.reduce((result, wordleTry) => {
-            const { word, greens = [], yellows = [] } = wordleTry;
-            const lowerCasedWord = word.toLowerCase();
+      ? wordles
+          .reduce(
+            this.reduceFilters,
+            Array.from({ length: wordles[0].matches.length }, () => {
+              return Array.from<MappedFilter>({ length: 0 });
+            }),
+          )
+          .map(mappedFilters => {
+            const filterOptions = mappedFilters.reduce((result, { word, yellows, greens }) => {
+              const lowerCasedWord = word.toLowerCase();
 
-            if (greens.length) {
-              for (const index of greens) {
-                result.indexedGreens.push({ index, character: lowerCasedWord[index] });
-                result.includeCharacters.push(lowerCasedWord[index]);
+              if (greens.length) {
+                for (const index of greens) {
+                  result.indexedGreens.push({ index, character: lowerCasedWord[index] });
+                  result.includeCharacters.push(lowerCasedWord[index]);
+                }
               }
-            }
 
-            if (yellows.length) this.updateYellowCharacters(result, wordleTry);
+              if (yellows.length) this.updateYellowCharacters({ result, word, yellows });
 
-            result.excludeCharacters.push(
-              ...lowerCasedWord
-                .split('')
-                .filter(
-                  character =>
-                    ![...greens, ...yellows]
-                      .map(index => lowerCasedWord[index])
-                      .includes(character),
-                ),
-            );
+              result.excludeCharacters.push(
+                ...lowerCasedWord
+                  .split('')
+                  .filter(
+                    character =>
+                      ![...greens, ...yellows]
+                        .map(index => lowerCasedWord[index])
+                        .includes(character),
+                  ),
+              );
 
-            return result;
-          }, new WordFilterOption());
+              return result;
+            }, new WordFilterOption());
 
-          return WORDS.filter(word => this.filterWordFunction(word, filterOptions));
-        })
+            return WORDS.filter(WORD => this.filterWordFunction(WORD, filterOptions));
+          })
       : [WORDS];
   }
 
-  private updateYellowCharacters(result: WordFilterOption, { word, yellows }: Try) {
+  private reduceFilters(result: MappedFilter[][], { word, matches }: Wordle) {
+    for (const [index, { yellows = [], greens = [] }] of matches.entries()) {
+      result[index].push({ word, yellows, greens });
+    }
+
+    return result;
+  }
+
+  private updateYellowCharacters({ result, word, yellows }: UpdateYellowCharactersArgs) {
     for (const index of yellows) {
       const foundYellow = result.indexedYellows.find(
         indexedYellow => indexedYellow.index === index,
@@ -114,12 +132,13 @@ export class WordlesService {
   }
 
   private sortBySize(
-    a: { word: string; occursSize: number; matchesSize: number },
-    b: { word: string; occursSize: number; matchesSize: number },
+    a: { word: string; occursSize: number; matchesSize: number; isCorrect: boolean },
+    b: { word: string; occursSize: number; matchesSize: number; isCorrect: boolean },
   ) {
-    return a.occursSize === b.occursSize
-      ? b.matchesSize - a.matchesSize
-      : b.occursSize - a.occursSize;
+    if (a.occursSize === b.occursSize) return b.matchesSize - a.matchesSize;
+    if (a.isCorrect === b.isCorrect) return b.occursSize - a.occursSize;
+
+    return a.isCorrect ? -1 : 1;
   }
 
   private getLettersPoint(words: string[]) {

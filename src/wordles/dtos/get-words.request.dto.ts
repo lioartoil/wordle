@@ -1,10 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, Matches, Max, Min, ValidateNested } from 'class-validator';
 
-export class Try {
-  @Matches(/^[a-z]{5}$/i)
-  word: string;
-
+export class Match {
   @IsOptional()
   @IsNumber({ maxDecimalPlaces: 0 }, { each: true })
   @Min(0, { each: true })
@@ -19,9 +16,12 @@ export class Try {
 }
 
 export class Wordle {
+  @Matches(/^[a-z]{5}$/i)
+  word: string;
+
   @ValidateNested({ each: true })
-  @Type(() => Try)
-  tries: Try[];
+  @Type(() => Match)
+  matches: Match[];
 }
 
 export class GetWordsRequest {
