@@ -1,28 +1,50 @@
-class IndexedGreen {
-  index: number;
-  character: string;
+class Point {
+  sum: Set<string>;
+  [key: number]: Set<string>;
 }
 
-class IndexedYellow {
+export class LettersPoint {
+  [key: string]: Point;
+}
+
+export class SumPoint {
+  matches = new Set<string>();
+  occurs = new Set<string>();
+}
+
+export class CreateSumPointArgs {
+  character: string;
   index: number;
+  lettersPoint: LettersPoint;
+  result: SumPoint;
+}
+
+export class MappedFilter {
+  greens: number[];
+  word: string;
+  yellows: number[];
+}
+
+export class SumWordPoint {
+  matchesSize = 0;
+  occursSize = 0;
+
+  constructor(public word: string, public isCorrect: boolean) {}
+}
+
+class ExcludedIndexCharacter {
   characters: string[];
+  index: number;
+}
+
+class MatchedIndexCharacter {
+  character: string;
+  index: number;
 }
 
 export class WordFilterOption {
   excludeCharacters: string[] = [];
+  excludedIndexCharacters: ExcludedIndexCharacter[] = [];
   includeCharacters: string[] = [];
-  indexedGreens: IndexedGreen[] = [];
-  indexedYellows: IndexedYellow[] = [];
-}
-
-export class UpdateYellowCharactersArgs {
-  result: WordFilterOption;
-  word: string;
-  yellows: number[];
-}
-
-export class MappedFilter {
-  word: string;
-  yellows: number[];
-  greens: number[];
+  matchedIndexCharacters: MatchedIndexCharacter[] = [];
 }

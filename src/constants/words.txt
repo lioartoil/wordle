@@ -1,4 +1,4 @@
-export const WORDS = `which
+which
 first
 their
 after
@@ -5756,4 +5756,4 @@ unfix
 kelpy
 laved
 stied
-spumy`.split('\n');
+spumy
