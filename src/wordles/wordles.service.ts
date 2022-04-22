@@ -99,29 +99,36 @@ export class WordlesService {
 
     for (const [index, character] of lowerCasedWord.split('').entries()) {
       if (greens.includes(index)) {
-        result.includeCharacters.push(character);
+        result.includedCharacters.push(character);
         result.matchedIndexCharacters.push({ index, character });
 
         continue;
       }
 
-      if (
-        yellows.includes(index) ||
-        [...greens, ...yellows].some(match => lowerCasedWord[match] === character)
-      ) {
-        result.includeCharacters.push(character);
+      const characterIndicesLength = [...greens, ...yellows].filter(
+        match => lowerCasedWord[match] === character,
+      ).length;
+
+      if (yellows.includes(index) || characterIndicesLength) {
+        result.includedCharacters.push(character);
 
         const foundYellow = result.excludedIndexCharacters.find(
           excludedIndexCharacter => excludedIndexCharacter.index === index,
         );
 
         if (foundYellow) foundYellow.characters.push(character);
-        else result.excludedIndexCharacters.push({ index, characters: [character] });
+        else {
+          result.excludedIndexCharacters.push({ index, characters: [character] });
+
+          if (characterIndicesLength > 1) {
+            result.includedWithAmounts.push({ character, amount: characterIndicesLength });
+          }
+        }
 
         continue;
       }
 
-      result.excludeCharacters.push(character);
+      result.excludedCharacters.push(character);
     }
 
     return result;
@@ -138,25 +145,29 @@ export class WordlesService {
   private filterWordFunction(
     word: string,
     {
-      excludeCharacters,
+      excludedCharacters,
       excludedIndexCharacters,
-      includeCharacters,
+      includedCharacters,
+      includedWithAmounts,
       matchedIndexCharacters,
     }: WordFilterOption,
   ) {
     return (
       matchedIndexCharacters.every(({ index, character }) => word[index] === character) &&
       excludedIndexCharacters.every(({ index, characters }) => !characters.includes(word[index])) &&
-      excludeCharacters.every(excludeCharacter => !word.split('').includes(excludeCharacter)) &&
-      includeCharacters.every(includeCharacter => word.split('').includes(includeCharacter))
+      excludedCharacters.every(excludeCharacter => !word.split('').includes(excludeCharacter)) &&
+      includedCharacters.every(includeCharacter => word.split('').includes(includeCharacter)) &&
+      includedWithAmounts.every(({ character, amount }) => {
+        return word.split('').filter(char => char === character).length >= amount;
+      })
     );
   }
 
   private sortBySize(a: SumWordPoint, b: SumWordPoint) {
-    if (a.occursSize === b.occursSize) return b.matchesSize - a.matchesSize;
-    if (a.isCorrect === b.isCorrect) return b.occursSize - a.occursSize;
+    if (a.isCorrect !== b.isCorrect) return a.isCorrect ? -1 : 1;
+    if (a.occursSize !== b.occursSize) return b.occursSize - a.occursSize;
 
-    return a.isCorrect ? -1 : 1;
+    return b.matchesSize - a.matchesSize;
   }
 
   private getLettersPoint(words: string[]) {
@@ -195,7 +206,7 @@ export class WordlesService {
 
     const { sum: allWords, [index]: matchWords } = lettersPoint[character];
 
-    if (matchWords.size === this.uniqueWords.size) return result;
+    if (!matchWords || matchWords.size === this.uniqueWords.size) return result;
 
     for (const matchWord of matchWords) result.matches.add(matchWord);
 

@@ -37,14 +37,20 @@ class ExcludedIndexCharacter {
   index: number;
 }
 
+class IncludedWithAmount {
+  amount: number;
+  character: string;
+}
+
 class MatchedIndexCharacter {
   character: string;
   index: number;
 }
 
 export class WordFilterOption {
-  excludeCharacters: string[] = [];
+  excludedCharacters: string[] = [];
   excludedIndexCharacters: ExcludedIndexCharacter[] = [];
-  includeCharacters: string[] = [];
+  includedCharacters: string[] = [];
+  includedWithAmounts: IncludedWithAmount[] = [];
   matchedIndexCharacters: MatchedIndexCharacter[] = [];
 }
