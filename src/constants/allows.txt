@@ -1,4 +1,4 @@
-export const WORDS = `which
+which
 first
 their
 after
@@ -10884,4 +10884,4 @@ unsex
 mened
 updos
 haffs
-alifs`.split('\n');
+alifs

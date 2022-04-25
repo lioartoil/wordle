@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 
-import { WORDS } from 'src/constants/words';
+import { allowed, answers } from 'src/constants/allowed-and-answer';
 
 export const createWikiWords = async () => {
   const words = (
@@ -28,11 +28,11 @@ export const createNewWordList = async () => {
     )
   ).split('\n');
 
-  const includedWords = words.filter(word => WORDS.includes(word));
-  const excludeWords = WORDS.filter(word => !includedWords.includes(word));
+  const includedWords = words.filter(word => answers.includes(word));
+  const excludeWords = words.filter(word => allowed.includes(word));
 
   fs.writeFile(
-    '/Users/lioartoil/Desktop/playground/wordle/src/constants/words.txt',
+    '/Users/lioartoil/Desktop/playground/wordle/src/constants/allows.txt',
     [...includedWords, ...excludeWords].join('\n'),
   );
 };
