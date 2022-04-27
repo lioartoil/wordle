@@ -1,42 +1,27 @@
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+.c9/
+.classpath
+.DS_Store
 .env*
-
-# compiled output
+.project
+.settings/
+.vscode/*
+*.launch
+*.log
+*.sqlite
+*.sublime-workspace
+*request.http
+/.idea
+/.nyc_output
+/coverage
 /dist
 /node_modules
-
-# Logs
+lerna-debug.log*
 logs
-*.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-lerna-debug.log*
 yarn.lock
-
-# OS
-.DS_Store
-
-# Tests
-/coverage
-/.nyc_output
-
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-*.sqlite
-
-*request.http
