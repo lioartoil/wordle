@@ -1,24 +1,3 @@
-class Point {
-  sum: Set<string>;
-  [key: number]: Set<string>;
-}
-
-export class LettersPoint {
-  [key: string]: Point;
-}
-
-export class SumPoint {
-  matches = new Set<string>();
-  occurs = new Set<string>();
-}
-
-export class CreateSumPointArgs {
-  character: string;
-  index: number;
-  lettersPoint: LettersPoint;
-  result: SumPoint;
-}
-
 export class MappedFilter {
   greens: number[];
   word: string;

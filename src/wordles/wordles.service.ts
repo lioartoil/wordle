@@ -3,14 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { WORDS } from 'src/constants/words';
 
 import { GetWordsRequest, Wordle } from './dtos/get-words.request.dto';
-import {
-  CreateSumPointArgs,
-  LettersPoint,
-  MappedFilter,
-  SumPoint,
-  SumWordPoint,
-  WordFilterOption,
-} from './models/wordles.model';
+import { MappedFilter, SumWordPoint, WordFilterOption } from './models/wordles.model';
 
 @Injectable()
 export class WordlesService {
@@ -22,7 +15,6 @@ export class WordlesService {
 
     const wordsGroups = this.getFilterWords();
     const correctWords = wordsGroups.filter(words => words.length === 1).flat();
-    const lettersPointGroups = wordsGroups.map(words => this.getLettersPoint(words));
 
     this.uniqueWords = wordsGroups.reduce((result, words) => {
       for (const word of words) result.add(word);
@@ -30,8 +22,8 @@ export class WordlesService {
       return result;
     }, new Set<string>());
 
-    const wordPointsGroups = lettersPointGroups.map(letterPointGroup => {
-      return this.getWordsPoint(letterPointGroup);
+    const wordPointsGroups = wordsGroups.map(wordsGroup => {
+      return this.getWordsPoint(wordsGroup);
     });
 
     const sumWordPoints = wordPointsGroups.reduce(
@@ -39,8 +31,8 @@ export class WordlesService {
         for (const wordPoint of wordPoints) {
           const foundWord = result.find(({ word }) => word === wordPoint.word);
 
-          foundWord.matchesSize += wordPoint.matches.size;
-          foundWord.occursSize += wordPoint.occurs.size;
+          foundWord.matchesSize += wordPoint.matchesCount;
+          foundWord.occursSize += wordPoint.occursCount;
         }
 
         return result;
@@ -60,10 +52,20 @@ export class WordlesService {
           )
         : sumWordPoints;
 
+    const inhomogeneousCharactersLength = [...this.uniqueWords][0]
+      .split('')
+      .filter((character, index) =>
+        [...this.uniqueWords].some(word => word[index] !== character),
+      ).length;
+
     return returnWords.map(({ word, occursSize, matchesSize, isCorrect }) => ({
       word,
-      occursCount: this.convertToPercent(occursSize / this.uniqueWords.size),
-      matchesCount: this.convertToPercent(matchesSize / this.uniqueWords.size),
+      occursCount: this.convertToPercent(
+        occursSize / (this.uniqueWords.size * inhomogeneousCharactersLength),
+      ),
+      matchesCount: this.convertToPercent(
+        matchesSize / (this.uniqueWords.size * inhomogeneousCharactersLength),
+      ),
       isCorrect: isCorrect || undefined,
     }));
   }
@@ -170,50 +172,34 @@ export class WordlesService {
     return b.matchesSize - a.matchesSize;
   }
 
-  private getLettersPoint(words: string[]) {
-    return words.reduce((sum, word) => {
-      const characters = word.split('');
+  private getWordsPoint(wordsGroup: string[]) {
+    return wordsGroup.map(word => {
+      const valuedIndices = word.split('').reduce((result, character, index) => {
+        if (wordsGroup.some(wordInSet => wordInSet[index] !== character)) result.push(index);
 
-      for (const [index, character] of characters.entries()) {
-        if (sum[character]) {
-          if (sum[character][index]?.size) sum[character][index].add(word);
-          else sum[character][index] = new Set([word]);
+        return result;
+      }, Array.from<number>({ length: 0 }));
 
-          if (!characters.slice(0, index).includes(character)) {
-            sum[character].sum.add(word);
-          }
-        } else {
-          sum[character] = { [index]: new Set([word]), sum: new Set([word]) };
-        }
-      }
+      const { matchesCount, occursCount } = wordsGroup.reduce(
+        (result, wordInSet) => {
+          const valuedCharacters = new Set(
+            wordInSet.split('').filter((_, index) => valuedIndices.includes(index)),
+          );
 
-      return sum;
-    }, {} as { [key: string]: { [key: number]: Set<string>; sum: Set<string> } });
-  }
+          result.matchesCount += valuedIndices.filter(
+            index => wordInSet[index] === word[index],
+          ).length;
 
-  private getWordsPoint(lettersPoint: LettersPoint) {
-    return [...this.uniqueWords].map(word => {
-      const sumPoint = word.split('').reduce((result, character, index) => {
-        return this.createSumPoint({ result, character, index, lettersPoint });
-      }, new SumPoint());
+          result.occursCount += [...valuedCharacters].filter(character =>
+            valuedIndices.some(index => word[index] === character),
+          ).length;
 
-      return { word, ...sumPoint };
+          return result;
+        },
+        { matchesCount: 0, occursCount: 0 },
+      );
+
+      return { word, matchesCount, occursCount };
     });
-  }
-
-  private createSumPoint({ result, character, index, lettersPoint }: CreateSumPointArgs) {
-    if (!lettersPoint[character]) return result;
-
-    const { sum: allWords, [index]: matchWords } = lettersPoint[character];
-
-    if (!matchWords || matchWords.size === this.uniqueWords.size) return result;
-
-    for (const matchWord of matchWords) result.matches.add(matchWord);
-
-    if (allWords.size !== this.uniqueWords.size) {
-      for (const allWord of allWords) result.occurs.add(allWord);
-    }
-
-    return result;
   }
 }
