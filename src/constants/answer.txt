@@ -1,4 +1,4 @@
-export const WORDS = `which
+which
 first
 their
 after
@@ -2312,4 +2312,4 @@ vaunt
 abase
 plier
 gayly
-outgo`.split('\n');
+outgo
