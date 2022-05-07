@@ -7,6 +7,7 @@ import { MappedFilter, SumWordPoint, WordFilterOption } from './models/wordles.m
 
 @Injectable()
 export class WordlesService {
+  private maxPoint: number;
   private uniqueWords: Set<string>;
   private wordles: Wordle[];
 
@@ -43,29 +44,30 @@ export class WordlesService {
       ),
     );
 
-    sumWordPoints.sort(this.sortBySize);
-
-    const returnWords =
-      sumWordPoints.length > 10
-        ? sumWordPoints.filter(
-            ({ occursSize, isCorrect }) => isCorrect || occursSize >= sumWordPoints[9].occursSize,
-          )
-        : sumWordPoints;
-
     const inhomogeneousCharactersLength = [...this.uniqueWords][0]
       .split('')
       .filter((character, index) =>
         [...this.uniqueWords].some(word => word[index] !== character),
       ).length;
 
+    this.maxPoint = this.uniqueWords.size * inhomogeneousCharactersLength;
+
+    sumWordPoints.sort((a, b) => this.sortBySize(a, b));
+
+    const returnWords =
+      sumWordPoints.length > 10
+        ? sumWordPoints.filter(
+            ({ occursSize, isCorrect }) =>
+              isCorrect ||
+              Math.abs(occursSize - this.maxPoint / 2) <=
+                Math.abs(sumWordPoints[9].occursSize - this.maxPoint / 2),
+          )
+        : sumWordPoints;
+
     return returnWords.map(({ word, occursSize, matchesSize, isCorrect }) => ({
       word,
-      occursCount: this.convertToPercent(
-        occursSize / (this.uniqueWords.size * inhomogeneousCharactersLength),
-      ),
-      matchesCount: this.convertToPercent(
-        matchesSize / (this.uniqueWords.size * inhomogeneousCharactersLength),
-      ),
+      occursCount: this.convertToPercent(occursSize / this.maxPoint),
+      matchesCount: this.convertToPercent(matchesSize / this.maxPoint),
       isCorrect: isCorrect || undefined,
     }));
   }
@@ -167,6 +169,11 @@ export class WordlesService {
 
   private sortBySize(a: SumWordPoint, b: SumWordPoint) {
     if (a.isCorrect !== b.isCorrect) return a.isCorrect ? -1 : 1;
+
+    const absA = Math.abs(a.occursSize - this.maxPoint / 2);
+    const absB = Math.abs(b.occursSize - this.maxPoint / 2);
+
+    if (absA !== absB) return absA - absB;
     if (a.occursSize !== b.occursSize) return b.occursSize - a.occursSize;
 
     return b.matchesSize - a.matchesSize;
